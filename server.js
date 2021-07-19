@@ -14,7 +14,7 @@ const questions = [
       "View all employees",
       "Add a department",
       "Add a role",
-      "Update an employee's role",
+      "Add an employee",
     ],
   },
 ];
@@ -31,6 +31,8 @@ function init() {
       addDepartment();
     } else if (question === "Add a role") {
       roleRequest();
+    } else if (question === "Add an employee") {
+      employeeRequest();
     }
   });
 }
@@ -177,6 +179,90 @@ const addRole = function (res, deptArr) {
     }
     console.log("\n");
     console.log(res.title + " added to roles");
+    console.log("\n");
+    return init();
+  });
+};
+
+//gets all employee's from the database to ask the user if that employee is managed by them and gets the
+//roles for the same purpose
+const employeeRequest = function () {
+  let query = "SELECT * from employee";
+
+  db.query(query, (err, employees) => {
+    let employeeArr = [];
+    let roleArr = [];
+    if (err) {
+      console.log({ error: err.message });
+      return;
+    }
+    for (let i = 0; i < employees.length; i++) {
+      let employee = employees[i].first_name + " " + employees[i].last_name;
+      employeeArr.push(employee);
+    }
+
+    //query for getting the roles
+    query = "SELECT * from role";
+    db.query(query, (err, roles) => {
+      if (err) {
+        console.log({ error: err.message });
+        return;
+      }
+      for (let j = 0; j < roles.length; j++) {
+        roleArr.push(roles[j].title);
+      }
+      promptEmployee(employeeArr, roleArr);
+    });
+  });
+};
+
+//Asks user questions about new employee to be added
+const promptEmployee = function (employeeArr, roleArr) {
+  inquirer
+    .prompt([
+      {
+        type: "input",
+        name: "fName",
+        message: "Please enter the first name of the employee:",
+      },
+      {
+        type: "input",
+        name: "lName",
+        message: "Please enter the last name of the employee:",
+      },
+      {
+        type: "list",
+        name: "manager",
+        message: "Please select the manager of the employee",
+        choices: employeeArr,
+      },
+      {
+        type: "list",
+        name: "role",
+        message: "Please select the employee's role",
+        choices: roleArr,
+      },
+    ])
+    .then((response) => {
+      addEmployee(response, employeeArr, roleArr);
+    });
+};
+
+const addEmployee = function (res, employeeArr, roleArr) {
+  let managerIndex = employeeArr.indexOf(res.manager) + 1;
+  let roleIndex = roleArr.indexOf(res.role) + 1;
+
+  query = `INSERT INTO employee (first_name, last_name, role_id, manager_id)
+  VALUES('${res.fName}', '${res.lName}', ${parseInt(roleIndex)}, ${parseInt(
+    managerIndex
+  )})`;
+  db.query(query, (err, result) => {
+    if (err) {
+      console.log({ error: err.message });
+      return;
+    }
+    console.log("\n");
+    console.log(res.fName + " " + res.lName + " added.");
     console.log("\n");
     return init();
   });
