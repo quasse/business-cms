@@ -15,6 +15,7 @@ const questions = [
       "Add a department",
       "Add a role",
       "Add an employee",
+      "Update an employee role",
     ],
   },
 ];
@@ -32,7 +33,9 @@ function init() {
     } else if (question === "Add a role") {
       roleRequest();
     } else if (question === "Add an employee") {
-      employeeRequest();
+      employeeRequest(question);
+    } else if (question === "Update an employee role") {
+      employeeRequest(question);
     }
   });
 }
@@ -184,11 +187,11 @@ const addRole = function (res, deptArr) {
   });
 };
 
-//gets all employee's from the database to ask the user if that employee is managed by them and gets the
-//roles for the same purpose
-const employeeRequest = function () {
+//gets all employee's from the database and roles from the database
+const employeeRequest = function (question) {
   let query = "SELECT * from employee";
 
+  //query for getting all employees
   db.query(query, (err, employees) => {
     let employeeArr = [];
     let roleArr = [];
@@ -211,7 +214,13 @@ const employeeRequest = function () {
       for (let j = 0; j < roles.length; j++) {
         roleArr.push(roles[j].title);
       }
-      promptEmployee(employeeArr, roleArr);
+
+      //Select helper function based on initial question
+      if (question === "Add an employee") {
+        promptEmployee(employeeArr, roleArr);
+      } else {
+        promptEmployeeUpdate(employeeArr, roleArr);
+      }
     });
   });
 };
@@ -248,7 +257,9 @@ const promptEmployee = function (employeeArr, roleArr) {
     });
 };
 
+//Queries database to add employee
 const addEmployee = function (res, employeeArr, roleArr) {
+  //Indexes
   let managerIndex = employeeArr.indexOf(res.manager) + 1;
   let roleIndex = roleArr.indexOf(res.role) + 1;
 
@@ -263,6 +274,58 @@ const addEmployee = function (res, employeeArr, roleArr) {
     }
     console.log("\n");
     console.log(res.fName + " " + res.lName + " added.");
+    console.log("\n");
+    return init();
+  });
+};
+
+//Asks user which employee they would like to update
+const promptEmployeeUpdate = function (employeeArr, roleArr) {
+  inquirer
+    .prompt([
+      {
+        type: "list",
+        name: "employee",
+        message: "Which employee would you like to update?",
+        choices: employeeArr,
+      },
+    ])
+    .then((response) => {
+      promptRoleUpdate(response, employeeArr, roleArr);
+    });
+};
+
+//Asks user which role they would like to change to
+const promptRoleUpdate = function (employee, employeeArr, roleArr) {
+  inquirer
+    .prompt([
+      {
+        type: "list",
+        name: "role",
+        message: "Which role would you like this employee to have?",
+        choices: roleArr,
+      },
+    ])
+    .then((response) => {
+      updateEmployee(response, employee, employeeArr, roleArr);
+    });
+};
+
+//Update's employee using previous two helper functions
+const updateEmployee = function (role, employee, employeeArr, roleArr) {
+  let employeeIndex = employeeArr.indexOf(employee.employee) + 1;
+  let roleIndex = roleArr.indexOf(role.role) + 1;
+
+  const query = `Update employee set role_id = ${parseInt(roleIndex)} 
+  where id = ${parseInt(employeeIndex)}`;
+
+  db.query(query, (err, result) => {
+    if (err) {
+      console.log({ error: err.message });
+      return;
+    }
+    console.log("\n");
+    console.log(employee.employee + "'s role has been updated to " + role.role);
     console.log("\n");
     return init();
   });
